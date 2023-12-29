@@ -6,12 +6,17 @@
 #include <mmu.h>
 #include <memlayout.h>
 #include <assert.h>
+#include <kmalloc.h>
 
 extern struct Page* pages;
 extern size_t npages;
 
 void pmm_init();
 void tlb_invalidate(pde_t *pgdir, uintptr_t va);
+struct Page* alloc_page();
+void free_page(struct Page *pp);
+struct Page* alloc_pages(size_t n);
+void free_pages(struct Page *pp, size_t n);
 
 /* This macro takes a kernel virtual address -- an address that points above
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --

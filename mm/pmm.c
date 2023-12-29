@@ -15,6 +15,7 @@ static size_t npages_basemem;	// Amount of base memory (in pages)
 pde_t *kern_pgdir;		// Kernel's initial page directory
 struct Page *pages;		// Physical page state array
 static struct Page *page_free_list;	// Free list of physical pages
+static unsigned int nr_free; // # of free pages in this free list
 
 static void check_page_alloc();
 static void check_pgdir();
@@ -109,31 +110,130 @@ static void page_init()
 
 }
 
+#if 1
+struct Page* alloc_pages(size_t n)
+{
+    assert(n > 0);
+    if (n > nr_free) {
+        return NULL ;
+    }
+
+    struct Page *le, *len, *lep;//len是le的下一个元素
+    le = page_free_list;
+    lep = NULL;
+    //遍历链表找到容量>=n的空闲块le,设置le的前一个元素lep
+    while (le != NULL) {
+        struct Page *p = le;
+        if (p->capacity >= n) {
+            // Lab2-2,your code here
+            //1.从le分配n页出去，更新le为len,可能需要更新page_free_list
+
+            //2.若p的容量>n,说明le空闲块还有剩余,更新le的容量
+
+            nr_free -= n;
+            return p;
+        }
+        lep = le;
+        le = le->pp_link;
+    }
+
+    return NULL ;
+}
+
+void free_pages(struct Page *base, size_t n)
+{
+    assert(n > 0);
+
+    struct Page *le, *lep, *basep;//base插入到le之前,lep代表le的前一个元素,basep代表base插入后它的前一个元素
+    struct Page *leprehead = NULL;//le的上一个空闲块的头部，basep的头部
+    le = page_free_list;
+    lep = NULL;
+
+    // Lab2-2,your code here
+    //1.找到在链表中的插入位置le，设置le,lep,leprehead
+
+    //设置basep
+    basep = lep;
+    //2.循环把base~base+n插入到le之前,更新lep
+    struct Page * p;
+
+    //设置base容量
+    base->capacity = n;
+    //3.如果base插入后与后续块le连续，更新base和le容量
+
+    //4.如果base插入后与前面的块basep连续，更新base和basep的头部leprehead的容量
+
+
+    //若basep==null,设置page_free_list = base
+    if(basep==NULL) page_free_list = base;
+
+    nr_free += n;
+}
+#else
+struct Page* alloc_pages(size_t n)
+{
+  struct Page *result,*left,*right;
+  int m;
+
+  //local_intr_save(intr_flag);
+  result = page_free_list;
+  left = NULL;
+  right = page_free_list;
+  m = n;
+
+  if (0 == n ||page_free_list < pages || &pages[npages] < page_free_list) {
+      return NULL;
+  }
+
+  while(n-- > 0) {
+      if (right < pages || &pages[npages] < right) {
+          cprintf("not memory to alloc %d pages\n", m);
+          return NULL;
+      }
+      left = right;
+      right = right->pp_link;
+  }
+
+  page_free_list = right;
+  left->pp_link = NULL;
+  // local_intr_restore(intr_flag);
+  return result;
+}
+
+void free_pages(struct Page *pp, size_t n)
+{
+  struct Page *m = NULL;
+
+  //local_intr_save(intr_flag);
+  if (NULL == pp || 0 == n)
+      panic("page_free: NULL == pp\n");
+
+  m = pp;
+
+  while(--n > 0) {
+      if (NULL == m || m->pp_ref != 0)
+          panic("page_free: mm->pp_ref is nonzero or m:0x%x\n", m);
+      m = m->pp_link;
+  }
+  if (NULL == m || m->pp_link != NULL)
+      panic("page_free: m->pp_link != NULL wrong free num\n");
+  if (m->pp_ref != 0)
+      panic("page_free: pp->pp_ref is nonzero\n");
+
+  m->pp_link = page_free_list;
+  page_free_list = pp;
+  // local_intr_restore(intr_flag);
+}
+#endif
+
 struct Page* alloc_page()
 {
-	struct Page *result = page_free_list;
-
-	if (page_free_list < pages || &pages[npages] < page_free_list) {
-		return NULL;
-	}
-
-	page_free_list = page_free_list->pp_link;
-	result->pp_link = NULL;
-	return result;
+    return alloc_pages(1);
 }
 
 void free_page(struct Page *pp)
 {
-	// Fill this function in
-	// Hint: You may want to panic if pp->pp_ref is nonzero or
-	// pp->pp_link is not NULL.
-	if (pp->pp_ref != 0)
-		panic("page_free: pp->pp_ref is nonzero\n");
-	if (pp->pp_link != NULL)
-		panic("page_free: pp->pp_link is not NULL\n");
-
-	pp->pp_link = page_free_list;
-	page_free_list = pp;
+    free_pages(pp, 1);
 }
 
 //get_pte - get page table addr of va.
@@ -168,8 +268,7 @@ static void page_remove_pte(pde_t *pgdir, uintptr_t va, pte_t *ptep)
 }
 
 //page_remove - free an Page which is related virtual address va and has an validated pte
-void
-page_remove(pde_t *pgdir, uintptr_t va)
+void page_remove(pde_t *pgdir, uintptr_t va)
 {
     pte_t *ptep = get_pte(pgdir, va, 0);
     if (ptep != NULL) {
@@ -260,6 +359,7 @@ void pmm_init()
 	// or page_insert
 	page_init();
 	check_page_alloc();
+	check_kmalloc();
 
 	check_pgdir();
 
@@ -296,76 +396,112 @@ void pmm_init()
 //
 static void check_page_alloc()
 {
-	struct Page *pp, *pp0, *pp1, *pp2;
-	int nfree;
-	struct Page *fl;
-	char *c;
-	int i;
+    struct Page *pp, *pp0, *pp1, *pp2, *pps, *pp3, *pp4, *pp5;
+    int nfree;
+    struct Page *fl;
+    int bfree;
+    char *c;
+    int i;
 
-	if (!pages)
-		panic("'pages' is a null pointer!");
+    if (!pages)
+        panic("'pages' is a null pointer!");
 
-	// check number of free pages
-	for (pp = page_free_list, nfree = 0; pp; pp = pp->pp_link)
-		++nfree;
+    // check number of free pages
+    for (pp = page_free_list, nfree = 0; pp; pp = pp->pp_link)
+        ++nfree;
 
-	// should be able to allocate three pages
-	pp0 = pp1 = pp2 = 0;
-	assert((pp0 = alloc_page()));
-	assert((pp1 = alloc_page()));
-	assert((pp2 = alloc_page()));
+    // should be able to allocate three pages
+    pp0 = pp1 = pp2 = 0;
+    assert((pp0 = alloc_page()));
+    assert((pp1 = alloc_page()));
+    assert((pp2 = alloc_page()));
 
-	assert(pp0);
-	assert(pp1 && pp1 != pp0);
-	assert(pp2 && pp2 != pp1 && pp2 != pp0);
-	assert(page2pa(pp0) < npages*PGSIZE);
-	assert(page2pa(pp1) < npages*PGSIZE);
-	assert(page2pa(pp2) < npages*PGSIZE);
+    assert(pp0);
+    assert(pp1 && pp1 != pp0);
+    assert(pp2 && pp2 != pp1 && pp2 != pp0);
+    assert(page2pa(pp0) < npages*PGSIZE);
+    assert(page2pa(pp1) < npages*PGSIZE);
+    assert(page2pa(pp2) < npages*PGSIZE);
 
-	// temporarily steal the rest of the free pages
-	fl = page_free_list;
-	page_free_list = 0;
+    assert((pps = alloc_pages(10)));
+    free_pages(pps, 10);
+    pps = 0;
 
-	// should be no free memory
-	assert(!alloc_page());
+    // temporarily steal the rest of the free pages
+    fl = page_free_list;
+    page_free_list = 0;
+    bfree = nr_free;
+    nr_free = 0;
 
-	// free and re-allocate?
-	free_page(pp0);
-	free_page(pp1);
-	free_page(pp2);
-	pp0 = pp1 = pp2 = 0;
-	assert((pp0 = alloc_page()));
-	assert((pp1 = alloc_page()));
-	assert((pp2 = alloc_page()));
-	assert(pp0);
-	assert(pp1 && pp1 != pp0);
-	assert(pp2 && pp2 != pp1 && pp2 != pp0);
-	assert(!alloc_page());
+    // should be no free memory
+    assert(!alloc_page());
 
-	// test flags
-	memset(page2kva(pp0), 1, PGSIZE);
-	free_page(pp0);
-	assert((pp = alloc_page()));
-	assert(pp && pp0 == pp);
-	c = page2kva(pp);
-	memset(c, 0, PGSIZE);
-	for (i = 0; i < PGSIZE; i++)
-		assert(c[i] == 0);
+    // free and re-allocate?
+    free_page(pp0);
+    free_page(pp1);
+    free_page(pp2);
+    pp0 = pp1 = pp2 = 0;
+    assert(!alloc_pages(4));
+    assert((pps = alloc_pages(3)));
+    assert(!alloc_page());
+    free_pages(pps, 3);
+    pps = 0;
+    assert((pp0 = alloc_page()));
+    assert((pp1 = alloc_page()));
+    assert((pp2 = alloc_page()));
+    assert(pp0);
+    assert(pp1 && pp1 != pp0);
+    assert(pp2 && pp2 != pp1 && pp2 != pp0);
+    assert(!alloc_page());
 
-	// give free list back
-	page_free_list = fl;
+    // test flags
+    memset(page2kva(pp0), 1, PGSIZE);
+    free_page(pp0);
+    assert((pp = alloc_page()));
+    assert(pp && pp0 == pp);
+    c = page2kva(pp);
+    memset(c, 0, PGSIZE);
+    for (i = 0; i < PGSIZE; i++)
+        assert(c[i] == 0);
 
-	// free the pages we took
-	free_page(pp0);
-	free_page(pp1);
-	free_page(pp2);
+    // give free list back
+    page_free_list = fl;
+    nr_free = bfree;
 
-	// number of free pages should be the same
-	for (pp = page_free_list; pp; pp = pp->pp_link)
-		--nfree;
-	assert(nfree == 0);
+    // free the pages we took
+    free_page(pp0);
+    free_page(pp1);
+    free_page(pp2);
 
-	cprintf("check_page_alloc() succeeded!\n");
+    //test first-fit
+    pp0 = pp1 = pp2 = pp3 = pp4 = pp5 = 0;
+    assert((pp0 = alloc_pages(1)));
+    assert((pp1 = alloc_pages(2)));
+    assert((pp2 = alloc_pages(2)));
+    assert((pp3 = alloc_page()));
+    assert((pp4 = alloc_page()));
+    free_page(pp0);
+    free_pages(pp2, 2);
+
+    assert((pp5 = alloc_pages(3)));
+    free_pages(pp5, 3);
+
+    free_page(pp3);
+    assert((pp5 = alloc_pages(3)));
+    free_pages(pp5, 3);
+
+    free_pages(pp1, 2);
+    assert((pp5 = alloc_pages(3)));
+    free_pages(pp5, 3);
+
+    free_page(pp4);
+
+    // number of free pages should be the same
+    for (pp = page_free_list; pp; pp = pp->pp_link)
+        --nfree;
+    assert(nfree == 0);
+
+    cprintf("check_page_alloc() succeeded!\n");
 }
 
 static void check_pgdir()

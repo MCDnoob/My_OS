@@ -70,6 +70,8 @@ struct Page {
 	// boot_alloc do not have valid reference count fields.
 
 	uint16_t pp_ref;
+
+	unsigned int capacity;
 };
 #endif /* not __ASSEMBLER__ */
 

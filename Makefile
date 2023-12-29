@@ -76,6 +76,7 @@ KERN_SRCFILES := kern/entry.S \
                  debug/panic.c \
                  debug/kdebug.c \
                  mm/pmm.c \
+                 mm/kmalloc.c \
 
 # Only build files if they exist.
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
@@ -132,6 +133,7 @@ $(OBJDIR)/bin/kernel.img: $(OBJDIR)/bin/kernel $(OBJDIR)/bin/boot
 
 all: $(OBJDIR)/bin/kernel.img
 
+TERMINAL        :=gnome-terminal
 QEMU := qemu-system-i386
 IMAGES = $(OBJDIR)/bin/kernel.img
 QEMUOPTS = -drive file=$(OBJDIR)/bin/kernel.img,index=0,media=disk,format=raw -serial mon:stdio -m 384
