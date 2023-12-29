@@ -1,6 +1,7 @@
 #include <string.h>
 #include <x86.h>
 #include <kbdreg.h>
+//#include <assert.h>
 
 /* stupid I/O delay routine necessitated by historical PC design flaws */
 static void delay(void)
@@ -374,6 +375,7 @@ static void kbd_intr(void)
 
 static void kbd_init(void)
 {
+	//assert(0);
 	// drain the kbd buffer
 	/* aaron Mark
 	 kbd_intr();

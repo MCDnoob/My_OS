@@ -46,6 +46,7 @@ $(OBJDIR)/bin/boot: $(BOOT_OBJS)
 OBJDIRS += kern
 OBJDIRS += driver
 OBJDIRS += lib
+OBJDIRS += debug
 
 KERN_CFLAGS := $(CFLAGS)
 KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld
@@ -53,6 +54,7 @@ KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld
 KERN_INCLUDE	:= sys/ \
 				   driver/ \
 				   lib/ \
+				   debug/ \
 
 KERN_CFLAGS += $(addprefix -I,$(KERN_INCLUDE))
 
@@ -67,6 +69,8 @@ KERN_SRCFILES := kern/entry.S \
                  lib/string.c \
                  lib/printfmt.c \
                  lib/readline.c \
+                 debug/panic.c \
+                 debug/kdebug.c \
 
 # Only build files if they exist.
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
@@ -91,6 +95,11 @@ $(OBJDIR)/driver/%.o: driver/%.c
 	$(CC) $(KERN_CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/lib/%.o: lib/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/debug/%.o: debug/%.c
 	@echo + cc $<
 	@mkdir -p $(@D)
 	$(CC) $(KERN_CFLAGS) -c -o $@ $<
