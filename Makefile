@@ -49,6 +49,7 @@ OBJDIRS += lib
 OBJDIRS += debug
 OBJDIRS += mm
 OBJDIRS += trap
+OBJDIRS += process
 
 KERN_CFLAGS := $(CFLAGS)
 KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld
@@ -59,6 +60,7 @@ KERN_INCLUDE	:= sys/ \
 		   debug/ \
 		   mm/ \
 		   trap/ \
+		   process/ \
 
 KERN_CFLAGS += $(addprefix -I,$(KERN_INCLUDE))
 
@@ -85,6 +87,10 @@ KERN_SRCFILES := kern/entry.S \
                  trap/trap.c \
                  trap/trapentry.S \
                  trap/vectors.S \
+                 process/kthreadentry.S \
+                 process/proc.c \
+                 process/sched.c \
+                 process/switch.S \
 
 # Only build files if they exist.
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
@@ -129,6 +135,16 @@ $(OBJDIR)/trap/%.o: trap/%.c
 	$(CC) $(KERN_CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/trap/%.o: trap/%.S
+	@echo + as $<
+	@mkdir -p $(@D)
+	$(CC)  $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/process/%.o: process/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/process/%.o: process/%.S
 	@echo + as $<
 	@mkdir -p $(@D)
 	$(CC)  $(KERN_CFLAGS) -c -o $@ $<

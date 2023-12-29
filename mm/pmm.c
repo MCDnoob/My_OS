@@ -85,6 +85,16 @@ static inline void lgdt(struct pseudodesc *pd)
     asm volatile ("ljmp %0, $1f\n 1:\n" :: "i" (KERNEL_CS));
 }
 
+/* *
+ * load_esp0 - change the ESP0 in default task state segment,
+ * so that we can use different kernel stack when we trap frame
+ * user to kernel.
+ * */
+void load_esp0(uintptr_t esp0)
+{
+    ts.ts_esp0 = esp0;
+}
+
 /* gdt_init - initialize the default GDT and TSS */
 static void gdt_init()
 {

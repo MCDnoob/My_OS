@@ -47,7 +47,8 @@
 #define KMEMSIZE            0x38000000                  // the maximum amount of physical memory
 #define KERNTOP             (KERNBASE + KMEMSIZE)
 
-#define KSTKSIZE	(8*PGSIZE)   		// size of a kernel stack
+#define KSTKPAGE          2                    // # of pages in kernel stack
+#define KSTKSIZE   (KSTKPAGE*PGSIZE)           // size of a kernel stack
 
 #ifndef __ASSEMBLER__
 /*

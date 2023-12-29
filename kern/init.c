@@ -6,6 +6,7 @@
 #include <picirq.h>
 #include <clock.h>
 #include <intr.h>
+#include <proc.h>
 
 void monitor(void)
 {
@@ -41,8 +42,11 @@ void kern_init(void)
 
 	clock_init();               // init clock interrupt
 
+    proc_init();
+
+
 	intr_enable();              // enable irq interrupt
 
-	monitor();
+    cpu_idle();                 // run idle process
 
 }

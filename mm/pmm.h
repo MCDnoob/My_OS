@@ -10,9 +10,11 @@
 
 extern struct Page* pages;
 extern size_t npages;
+extern pde_t *kern_pgdir;
 
 void pmm_init();
 void tlb_invalidate(pde_t *pgdir, uintptr_t va);
+void load_esp0(uintptr_t esp0);
 struct Page* alloc_page();
 void free_page(struct Page *pp);
 struct Page* alloc_pages(size_t n);
