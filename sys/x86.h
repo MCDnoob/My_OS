@@ -43,6 +43,10 @@ struct pseudodesc {
 
 static inline void lidt(struct pseudodesc *pd) __attribute__((always_inline));
 static inline void ltr(uint16_t sel) __attribute__((always_inline));
+static inline void sti(void) __attribute__((always_inline));
+static inline void cli(void) __attribute__((always_inline));
+static inline uint32_t read_eflags(void) __attribute__((always_inline));
+static inline void write_eflags(uint32_t eflags) __attribute__((always_inline));
 
 
 static inline uint8_t inb(uint16_t port)
@@ -152,6 +156,28 @@ static inline void lidt(struct pseudodesc *pd)
 static inline void ltr(uint16_t sel)
 {
     asm volatile ("ltr %0" :: "r" (sel) : "memory");
+}
+
+static inline void sti(void)
+{
+    asm volatile ("sti");
+}
+
+static inline void cli(void)
+{
+    asm volatile ("cli" ::: "memory");
+}
+
+static inline uint32_t read_eflags(void)
+{
+    uint32_t eflags;
+    asm volatile ("pushfl; popl %0" : "=r" (eflags));
+    return eflags;
+}
+
+static inline void write_eflags(uint32_t eflags)
+{
+    asm volatile ("pushl %0; popfl" :: "r" (eflags));
 }
 
 static inline int __strcmp(const char *s1, const char *s2) __attribute__((always_inline));

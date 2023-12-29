@@ -3,6 +3,7 @@
 #include <pmm.h>
 #include <stdio.h>
 #include <string.h>
+#include <sync.h>
 
 /*
  * SLOB Allocator: Simple List Of Blocks
@@ -37,8 +38,8 @@
 
 
 //some helper
-#define spin_lock_irqsave(l, f) //local_intr_save(f)
-#define spin_unlock_irqrestore(l, f) //local_intr_restore(f)
+#define spin_lock_irqsave(l, f) local_intr_save(f)
+#define spin_unlock_irqrestore(l, f) local_intr_restore(f)
 typedef unsigned int gfp_t;
 #ifndef PAGE_SIZE
 #define PAGE_SIZE PGSIZE
@@ -98,7 +99,7 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align)
 
 	slob_t *prev, *cur, *aligned = 0;
 	int delta = 0, units = SLOB_UNITS(size);
-	//unsigned long flags;
+	bool flags;
 
 	spin_lock_irqsave(&slob_lock, flags);
 	prev = slobfree;
@@ -150,7 +151,7 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align)
 static void slob_free(void *block, int size)
 {
 	slob_t *cur, *b = (slob_t *)block;
-	//unsigned long flags;
+	bool flags;
 
 	if (!block)
 		return;
@@ -221,7 +222,7 @@ static void *__kmalloc(size_t size, gfp_t gfp)
 {
 	slob_t *m;
 	bigblock_t *bb;
-	//unsigned long flags;
+	bool flags;
 
 	if (size < PAGE_SIZE - SLOB_UNIT) {
 		m = slob_alloc(size + SLOB_UNIT, gfp, 0);
@@ -257,7 +258,7 @@ void* kmalloc(size_t size)
 void kfree(void *block)
 {
     bigblock_t *bb, **last = &bigblocks;
-    //unsigned long flags;
+    bool flags;
 
     if (!block)
         return;
@@ -308,7 +309,7 @@ void kfree(void *ptr, size_t n)
 unsigned int ksize(const void *block)
 {
 	bigblock_t *bb;
-	//unsigned long flags;
+	bool flags;
 
 	if (!block)
 		return 0;

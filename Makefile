@@ -71,6 +71,9 @@ KERN_SRCFILES := kern/entry.S \
                  kern/init.c \
                  driver/console.c \
                  driver/rtc.c \
+                 driver/clock.c \
+                 driver/intr.c \
+                 driver/picirq.c \
                  lib/stdio.c \
                  lib/string.c \
                  lib/printfmt.c \

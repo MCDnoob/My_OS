@@ -3,6 +3,9 @@
 #include <kbdreg.h>
 //#include <assert.h>
 #include <memlayout.h>
+#include <trap.h>
+#include <picirq.h>
+#include <sync.h>
 #include <console.h>
 
 /* stupid I/O delay routine necessitated by historical PC design flaws */
@@ -100,10 +103,9 @@ static void serial_init(void)
 	(void) inb(COM1 + COM_IIR);
 	(void) inb(COM1 + COM_RX);
 
-	/* aaron mark
-	 if (serial_exists) {
-	 pic_enable(IRQ_COM1);
-	 }*/
+    if (serial_exists) {
+        pic_enable(IRQ_COM1);
+    }
 }
 
 /* cga_putc - print character to console */
@@ -399,8 +401,13 @@ void cons_init(void)
 /* cons_putc - print a single character @c to console devices */
 void cons_putc(int c)
 {
-	cga_putc(c);
-	serial_putc(c);
+    bool intr_flag;
+    local_intr_save(intr_flag);
+    {
+        cga_putc(c);
+        serial_putc(c);
+    }
+    local_intr_restore(intr_flag);
 }
 
 /* *
@@ -409,22 +416,25 @@ void cons_putc(int c)
  * */
 int cons_getc(void)
 {
-	int c;
+    int c = 0;
+    bool intr_flag;
+    local_intr_save(intr_flag);
+    {
+        // poll for any pending input characters,
+        // so that this function works even when interrupts are disabled
+        // (e.g., when called from the kernel monitor).
+        serial_intr();
+        kbd_intr();
 
-	// poll for any pending input characters,
-	// so that this function works even when interrupts are disabled
-	// (e.g., when called from the kernel monitor).
-	serial_intr();
-	kbd_intr();
-
-	// grab the next character from the input buffer.
-	if (cons.rpos != cons.wpos) {
-		c = cons.buf[cons.rpos++];
-		if (cons.rpos == CONSBUFSIZE) {
-			cons.rpos = 0;
-		}
-		return c;
-	}
-	return 0;
+        // grab the next character from the input buffer.
+        if (cons.rpos != cons.wpos) {
+            c = cons.buf[cons.rpos ++];
+            if (cons.rpos == CONSBUFSIZE) {
+                cons.rpos = 0;
+            }
+        }
+    }
+    local_intr_restore(intr_flag);
+    return c;
 }
 

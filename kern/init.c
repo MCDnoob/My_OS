@@ -3,6 +3,9 @@
 #include <console.h>
 #include <pmm.h>
 #include <trap.h>
+#include <picirq.h>
+#include <clock.h>
+#include <intr.h>
 
 void monitor(void)
 {
@@ -32,7 +35,13 @@ void kern_init(void)
 
 	pmm_init();
 
+	pic_init();                 // init interrupt controller
+
 	idt_init();
+
+	clock_init();               // init clock interrupt
+
+	intr_enable();              // enable irq interrupt
 
 	monitor();
 

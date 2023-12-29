@@ -164,6 +164,12 @@ static void trap_dispatch(struct trapframe *tf)
     	print_trapframe(tf);
     	pgfault_handler(tf);
         break;
+    case IRQ_OFFSET + IRQ_TIMER:
+        //cprintf("IRQ_TIMER.\n");
+        break;
+    case IRQ_OFFSET + IRQ_COM1:
+        //cprintf("IRQ_COM1.\n");
+        break;
     default:
         // in kernel, it must be a mistake
         if (trap_in_kernel(tf)) {
