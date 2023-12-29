@@ -44,11 +44,15 @@ $(OBJDIR)/bin/boot: $(BOOT_OBJS)
 ######## for kernel build
 
 OBJDIRS += kern
+OBJDIRS += driver
+OBJDIRS += lib
 
 KERN_CFLAGS := $(CFLAGS)
 KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld
 
 KERN_INCLUDE	:= sys/ \
+				   driver/ \
+				   lib/ \
 
 KERN_CFLAGS += $(addprefix -I,$(KERN_INCLUDE))
 
@@ -57,7 +61,12 @@ KERN_CFLAGS += $(addprefix -I,$(KERN_INCLUDE))
 # We also snatch the use of a couple handy source files
 # from the lib directory, to avoid gratuitous code duplication.
 KERN_SRCFILES := kern/entry.S \
-		 kern/init.c \
+                 kern/init.c \
+                 driver/console.c \
+                 lib/stdio.c \
+                 lib/string.c \
+                 lib/printfmt.c \
+                 lib/readline.c \
 
 # Only build files if they exist.
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
@@ -75,6 +84,16 @@ $(OBJDIR)/kern/%.o: kern/%.S
 	@echo + as $<
 	@mkdir -p $(@D)
 	$(CC)  $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/driver/%.o: driver/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/lib/%.o: lib/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(KERN_CFLAGS) -c -o $@ $<
 
 # How to build the kernel itself
 $(OBJDIR)/bin/kernel: $(KERN_OBJFILES)  kern/kernel.ld
