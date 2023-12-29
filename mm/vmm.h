@@ -47,6 +47,7 @@ void mm_destroy(struct mm_struct *mm);
 void vmm_init();
 int mm_map(struct mm_struct *mm, uintptr_t addr, size_t len, uint32_t vm_flags,
            struct vma_struct **vma_store);
+int dup_mmap(struct mm_struct *to, struct mm_struct *from);
 void exit_mmap(struct mm_struct *mm);
 
 bool user_mem_check(struct mm_struct *mm, uintptr_t start, size_t len, bool write);

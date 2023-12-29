@@ -34,3 +34,8 @@ int sys_putc(int c)
 {
     return syscall(SYS_putc, c);
 }
+
+int sys_fork()
+{
+    return syscall(SYS_fork);
+}

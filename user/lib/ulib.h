@@ -3,6 +3,7 @@
 
 
 int getpid();
+int fork();
 
 
 #endif /* !OS_USER_LIB_ULIB_H */

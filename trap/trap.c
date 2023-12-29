@@ -173,6 +173,7 @@ static void trap_dispatch(struct trapframe *tf)
         break;
     case IRQ_OFFSET + IRQ_TIMER:
         //cprintf("IRQ_TIMER.\n");
+        do_yield();
         break;
     case IRQ_OFFSET + IRQ_COM1:
         //cprintf("IRQ_COM1.\n");

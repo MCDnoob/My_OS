@@ -22,9 +22,17 @@ static int sys_putc(uint32_t arg[])
     return 0;
 }
 
+static int sys_fork(uint32_t arg[])
+{
+    struct trapframe *tf = current->tf;
+    uintptr_t stack = tf->tf_esp;
+    return do_fork(0, stack, tf);
+}
+
 static int (*syscalls[])(uint32_t arg[]) = {
         [SYS_exec]              sys_exec,
         [SYS_putc]              sys_putc,
+        [SYS_fork]              sys_fork,
 };
 
 #define NUM_SYSCALLS        ((sizeof(syscalls)) / (sizeof(syscalls[0])))

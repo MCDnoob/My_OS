@@ -446,6 +446,59 @@ void exit_range(pde_t *pgdir, uintptr_t start, uintptr_t end)
 	} while (start != 0 && start < end);
 }
 
+/* copy_range - copy content of memory (start, end) of one process A to another process B
+ * @to:    the addr of process B's Page Directory
+ * @from:  the addr of process A's Page Directory
+ * @share: flags to indicate to dup OR share.
+ *
+ * CALL GRAPH: copy_mm-->dup_mmap-->copy_range
+ */
+int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share)
+{
+  assert(start % PGSIZE == 0 && end % PGSIZE == 0);
+  assert(USER_ACCESS(start, end));
+  // copy content by page unit.
+  do {
+    //call get_pte to find process A's pte according to the addr start
+    pte_t *ptep = get_pte(from, start, 0);
+    if (ptep == NULL ) {
+      start = ROUNDDOWN(start + PTSIZE, PTSIZE);
+      continue;
+    }
+
+    if (*ptep & PTE_P) {
+      uint32_t perm = (*ptep & PTE_USER);
+      //get page from ptep
+      struct Page *page = pte2page(*ptep);
+      // alloc a page for process B
+      struct Page *npage = alloc_page();
+      assert(page!=NULL);
+      assert(npage!=NULL);
+      int ret = 0;
+      /*
+       * replicate content of page to npage, build the map of phy addr of nage with the linear addr start
+       *
+       * Some Useful MACROs and DEFINEs, you can use them in below implementation.
+       * MACROs or Functions:
+       *    page2kva(struct Page *page): return the kernel vritual addr of memory which page managed (SEE pmm.h)
+       *    page_insert: build the map of phy addr of an Page with the linear addr la
+       *    memcpy: typical memory copy function
+       *
+       * (1) find src_kvaddr: the kernel virtual address of page
+       * (2) find dst_kvaddr: the kernel virtual address of npage
+       * (3) memory copy from src_kvaddr to dst_kvaddr, size is PGSIZE
+       * (4) build the map of phy addr of  nage with the linear addr start
+       */
+      // Lab4-3,your code here
+
+      assert(ret == 0);
+    }
+    start += PGSIZE;
+  } while (start != 0 && start < end);
+
+  return 0;
+}
+
 // invalidate a TLB entry, but only if the page tables being
 // edited are the ones currently in use by the processor.
 void tlb_invalidate(pde_t *pgdir, uintptr_t va)

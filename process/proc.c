@@ -249,6 +249,12 @@ static int setup_kstack(struct proc_struct *proc)
     return -E_NO_MEM;
 }
 
+// put_kstack - free the memory space of process kernel stack
+static void put_kstack(struct proc_struct *proc)
+{
+    free_pages(kva2page((void *)(proc->kstack)), KSTKPAGE);
+}
+
 // setup_pgdir - alloc one page as PDT
 static int setup_pgdir(struct mm_struct *mm)
 {
@@ -268,13 +274,60 @@ static void put_pgdir(struct mm_struct *mm)
     free_page(kva2page(mm->pgdir));
 }
 
+// copy_mm - process "proc" duplicate OR share process "current"'s mm according clone_flags
+//         - if clone_flags & CLONE_VM, then "share" ; else "duplicate"
+static int copy_mm(uint32_t clone_flags, struct proc_struct *proc)
+{
+    struct mm_struct *mm, *oldmm = current->mm;
+
+    /* current is a kernel thread */
+    if (oldmm == NULL) {
+        return 0;
+    }
+    if (clone_flags & CLONE_VM) {
+        mm = oldmm;
+        goto good_mm;
+    }
+
+    int ret = -E_NO_MEM;
+    if ((mm = mm_create()) == NULL) {
+        goto bad_mm;
+    }
+    if (setup_pgdir(mm) != 0) {
+        goto bad_pgdir_cleanup_mm;
+    }
+
+    //lock_mm(oldmm);
+    {
+        ret = dup_mmap(mm, oldmm);
+    }
+    //unlock_mm(oldmm);
+
+    if (ret != 0) {
+        goto bad_dup_cleanup_mmap;
+    }
+
+good_mm:
+    mm_count_inc(mm);
+    proc->mm = mm;
+    proc->cr3 = PADDR(mm->pgdir);
+    return 0;
+bad_dup_cleanup_mmap:
+    exit_mmap(mm);
+    put_pgdir(mm);
+bad_pgdir_cleanup_mm:
+    mm_destroy(mm);
+bad_mm:
+    return ret;
+}
+
 // copy_thread - setup the trapframe on the  process's kernel stack top and
 //             - setup the kernel entry point and stack of process
 static void copy_thread(struct proc_struct *proc, uintptr_t esp, struct trapframe *tf)
 {
     proc->tf = (struct trapframe *)(proc->kstack + KSTKSIZE) - 1;
     *(proc->tf) = *tf;
-    proc->tf->tf_regs.reg_eax = 0;
+    proc->tf->tf_regs.reg_eax = 0; // fork return 0
     proc->tf->tf_esp = esp;
     proc->tf->tf_eflags = 0;
     proc->tf->tf_eflags |= FL_IF; // set when interupt on
@@ -324,11 +377,20 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf)
 
 fork_out:
     return ret;
-
+bad_fork_cleanup_kstack:
+	put_kstack(proc);
 bad_fork_cleanup_proc:
 	free_proc(proc);
 
     return ret;
+}
+
+int do_yield()
+{
+   current->need_resched = 1;
+   schedule();
+
+   return 0;
 }
 
 // do_exit - called by sys_exit
