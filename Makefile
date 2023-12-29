@@ -57,6 +57,11 @@ USER_CFLAGS += $(addprefix -I,$(USER_INCLUDE))
 # initcode.S must be first, so that it's the first code in the text segment!!!
 USER_SRCFILES := user/lib/initcode.S \
 				 user/lib/umain.c \
+				 user/lib/stdio.c \
+				 user/lib/syscall.c \
+				 user/lib/ulib.c \
+				 lib/string.c \
+				 lib/printfmt.c \
 				 user/init.c
 
 # Only build files if they exist.

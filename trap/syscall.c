@@ -15,8 +15,16 @@ static int sys_exec(uint32_t arg[])
     return do_execve(name, len, binary, size);
 }
 
+static int sys_putc(uint32_t arg[])
+{
+    int c = (int) arg[0];
+    cputchar(c);
+    return 0;
+}
+
 static int (*syscalls[])(uint32_t arg[]) = {
-    [SYS_exec]              sys_exec,
+        [SYS_exec]              sys_exec,
+        [SYS_putc]              sys_putc,
 };
 
 #define NUM_SYSCALLS        ((sizeof(syscalls)) / (sizeof(syscalls[0])))
