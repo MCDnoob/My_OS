@@ -68,12 +68,14 @@ KERN_SRCFILES := kern/entry.S \
                  kern/entrypgdir.c \
                  kern/init.c \
                  driver/console.c \
+                 driver/rtc.c \
                  lib/stdio.c \
                  lib/string.c \
                  lib/printfmt.c \
                  lib/readline.c \
                  debug/panic.c \
                  debug/kdebug.c \
+                 mm/pmm.c \
 
 # Only build files if they exist.
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
@@ -132,7 +134,7 @@ all: $(OBJDIR)/bin/kernel.img
 
 QEMU := qemu-system-i386
 IMAGES = $(OBJDIR)/bin/kernel.img
-QEMUOPTS = -drive file=$(OBJDIR)/bin/kernel.img,index=0,media=disk,format=raw -serial mon:stdio -m 512
+QEMUOPTS = -drive file=$(OBJDIR)/bin/kernel.img,index=0,media=disk,format=raw -serial mon:stdio -m 384
 
 qemu: $(IMAGES)
 	$(QEMU) $(QEMUOPTS)

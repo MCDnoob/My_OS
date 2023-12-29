@@ -4,29 +4,41 @@
 /* This file contains the definitions for memory management in our OS. */
 
 /* *
- * Virtual memory map:                                          Permissions
- *                                                              kernel/user
- *
- *     4G ------------------> +---------------------------------+
- *                            |                                 |
- *                            |         Empty Memory (*)        |
- *                            |                                 |
- *                            +---------------------------------+ 0xFB000000
- *                            |   Cur. Page Table (Kern, RW)    | RW/-- PTSIZE
- *     VPT -----------------> +---------------------------------+ 0xFAC00000
- *                            |        Invalid Memory (*)       | --/--
+ *     Virtual memory map:
+ *     4G ------------------> +---------------------------------+ 0xFFFFFFFF
+ *                            |         High Memory (*)         | 128M
  *     KERNTOP -------------> +---------------------------------+ 0xF8000000
+ *                            |    Remapped Physical Memory     | KMEMSIZE(896M)
  *                            |                                 |
- *                            |    Remapped Physical Memory     | RW/-- KMEMSIZE
+ *     KERNBASE ------------> +---------------------------------+ 0xC0000000(3G)
  *                            |                                 |
- *     KERNBASE ------------> +---------------------------------+ 0xC0000000
+ *                            |           User Space            | --/--
  *                            |                                 |
+ *     0 -------------------> +---------------------------------+ 0x00000000
+ *
+ *
+ *    physical memory:
+ *     4G -------------  ---> +---------------------------------+ 0xFFFFFFFF
+ *                            |           外设映射空间            |
  *                            |                                 |
+ *     384M ----------------> +---------------------------------+ 0x20000000
+ *                            |           空闲内存~382M          |
  *                            |                                 |
- *                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * (*) Note: The kernel ensures that "Invalid Memory" is *never* mapped.
- *     "Empty Memory" is normally unmapped, but user programs may map pages
- *     there if desired.
+ *     pages end -----------> +---------------------------------+ pages end
+ *                            |    npages*sizeof(struct Page)   | -- (768KB)
+ *     kpgdir end ----------> +---------------------------------+ kpgdir end
+ *                            |           kern_pgdir            | -- PGSIZE
+ *     bss end -------------> +---------------------------------+ bss end
+ *                            |           kernel code           |
+ *     1M ------------------> +---------------------------------+ 0x00100000
+ *                            |           BIOS ROM              |
+ *     960KB ---------------> +---------------------------------+ 0x000F0000
+ *                            |           16位外设,扩展ROMS       |
+ *     768KB ---------------> +---------------------------------+ 0x000C0000
+ *                            |           VGA显示缓存            |
+ *     640KB ---------------> +---------------------------------+ 0x000A0000
+ *                            |           bootloader            |
+ *     0  ------------------> +---------------------------------+ 0x00000000
  *
  * */
 
@@ -34,14 +46,6 @@
 #define KERNBASE            0xC0000000
 #define KMEMSIZE            0x38000000                  // the maximum amount of physical memory
 #define KERNTOP             (KERNBASE + KMEMSIZE)
-
-/* *
- * Virtual page table. Entry PDX[VPT] in the PD (Page Directory) contains
- * a pointer to the page directory itself, thereby turning the PD into a page
- * table, which maps all the PTEs (Page Table Entry) containing the page mappings
- * for the entire virtual address space into that 4 Meg region starting at VPT.
- * */
-#define VPT                 0xFAC00000
 
 #define KSTKSIZE	(8*PGSIZE)   		// size of a kernel stack
 
@@ -70,4 +74,3 @@ struct Page {
 #endif /* not __ASSEMBLER__ */
 
 #endif /* OS_MM_MEMLAYOUT_H */
-

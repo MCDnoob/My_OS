@@ -2,6 +2,8 @@
 #include <x86.h>
 #include <kbdreg.h>
 //#include <assert.h>
+#include <memlayout.h>
+#include <console.h>
 
 /* stupid I/O delay routine necessitated by historical PC design flaws */
 static void delay(void)
@@ -50,11 +52,11 @@ static uint16_t addr_6845;
 
 static void cga_init(void)
 {
-	volatile uint16_t *cp = (uint16_t *) CGA_BUF;
+	volatile uint16_t *cp = (uint16_t *)(CGA_BUF + KERNBASE);
 	uint16_t was = *cp;
 	*cp = (uint16_t) 0xA55A;
 	if (*cp != 0xA55A) {
-		cp = (uint16_t*) MONO_BUF;
+		cp = (uint16_t*)(MONO_BUF + KERNBASE);
 		addr_6845 = MONO_BASE;
 	} else {
 		*cp = was;
@@ -368,7 +370,7 @@ static int kbd_proc_data(void)
 }
 
 /* kbd_intr - try to feed input characters from keyboard */
-static void kbd_intr(void)
+void kbd_intr(void)
 {
 	cons_intr(kbd_proc_data);
 }

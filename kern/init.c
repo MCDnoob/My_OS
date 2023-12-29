@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <console.h>
+#include <pmm.h>
 
 void monitor(void)
 {
@@ -27,6 +28,8 @@ void kern_init(void)
 	cons_init();
 
 	cprintf("wind_os version %d running!\n", 1);
+
+	pmm_init();
 
 	monitor();
 
