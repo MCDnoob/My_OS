@@ -26,12 +26,12 @@ BOOT_OBJS := $(OBJDIR)/boot/boot.o $(OBJDIR)/boot/main.o
 $(OBJDIR)/boot/%.o: boot/%.c
 	@echo + cc -O0 $<
 	@mkdir -p $(@D)
-	$(CC)  $(CFLAGS) -Isys/ -Os -c -o $@ $<
+	$(CC)  $(CFLAGS) -Isys/ -Imm/ -Os -c -o $@ $<
 
 $(OBJDIR)/boot/%.o: boot/%.S
 	@echo + as $<
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -Isys/ -c -o $@ $<
+	$(CC) $(CFLAGS) -Isys/ -Imm/ -c -o $@ $<
 
 $(OBJDIR)/bin/boot: $(BOOT_OBJS)
 	@echo + ld bin/boot
@@ -47,14 +47,16 @@ OBJDIRS += kern
 OBJDIRS += driver
 OBJDIRS += lib
 OBJDIRS += debug
+OBJDIRS += mm
 
 KERN_CFLAGS := $(CFLAGS)
 KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld
 
 KERN_INCLUDE	:= sys/ \
-				   driver/ \
-				   lib/ \
-				   debug/ \
+		   driver/ \
+		   lib/ \
+		   debug/ \
+		   mm/ \
 
 KERN_CFLAGS += $(addprefix -I,$(KERN_INCLUDE))
 
@@ -63,6 +65,7 @@ KERN_CFLAGS += $(addprefix -I,$(KERN_INCLUDE))
 # We also snatch the use of a couple handy source files
 # from the lib directory, to avoid gratuitous code duplication.
 KERN_SRCFILES := kern/entry.S \
+                 kern/entrypgdir.c \
                  kern/init.c \
                  driver/console.c \
                  lib/stdio.c \
@@ -100,6 +103,11 @@ $(OBJDIR)/lib/%.o: lib/%.c
 	$(CC) $(KERN_CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/debug/%.o: debug/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/mm/%.o: mm/%.c
 	@echo + cc $<
 	@mkdir -p $(@D)
 	$(CC) $(KERN_CFLAGS) -c -o $@ $<
