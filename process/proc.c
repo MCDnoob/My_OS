@@ -394,12 +394,121 @@ int do_yield()
 }
 
 // do_exit - called by sys_exit
-//   1. call exit_mmap & put_pgdir & mm_destroy to free the almost all memory space of process
+//   1. free memory space of process
 //   2. set process' state as PROC_ZOMBIE, then call wakeup_proc(parent) to ask parent reclaim itself.
 //   3. call scheduler to switch to other process
 int do_exit(int error_code)
 {
-    panic("process exit!!.\n");
+    if (current == idleproc) {
+        panic("idleproc exit.\n");
+    }
+    if (current == initproc) {
+        panic("initproc exit.\n");
+    }
+
+    struct mm_struct *mm = current->mm;
+    if (mm != NULL ) {
+        lcr3(PADDR(kern_pgdir));
+        if (mm_count_dec(mm) == 0) {
+        	// free page of related virtual address/pgtable,free pgdir,free mm_struct/vma_struct
+        	// Lab4-4,your code here
+
+        }
+        current->mm = NULL;
+    }
+    current->state = PROC_ZOMBIE;
+    current->exit_code = error_code;
+
+    bool intr_flag;
+    struct proc_struct *parent;
+    local_intr_save(intr_flag);
+    {
+        parent = current->parent;
+        if (parent->wait_state == WT_CHILD) {
+            wakeup_proc(parent);
+        }
+
+        list_entry_t *list = &proc_list, *le = list;
+        while ((le = list_next(le)) != list) {
+            struct proc_struct *proc = le2proc(le, list_link);
+            if (proc != NULL && proc->parent == current) {
+                proc->parent = initproc;
+                if (initproc->wait_state == WT_CHILD) {
+                    wakeup_proc(initproc);
+                }
+            }
+        }
+
+    }
+    local_intr_restore(intr_flag);
+
+    schedule();
+    panic("do_exit will not return!! %d.\n", current->pid);
+
+    return 0;
+}
+
+// do_wait - wait one OR any children with PROC_ZOMBIE state, and free memory space of kernel stack
+//         - proc struct of this child.
+// NOTE: only after do_wait function, all resources of the child proces are free.
+int do_wait(int pid, int *code_store)
+{
+    struct mm_struct *mm = current->mm;
+    if (code_store != NULL) {
+        if (!user_mem_check(mm, (uintptr_t)code_store, sizeof(int), 1)) {
+            return -E_INVAL;
+        }
+    }
+
+    struct proc_struct *proc;
+    bool haskid;
+repeat:
+    haskid = 0;
+    if (pid != 0) {
+        proc = find_proc(pid);
+        if (proc != NULL && proc->parent == current) {
+            haskid = 1;
+            if (proc->state == PROC_ZOMBIE) {
+                goto found;
+            }
+        }
+    } else {
+        list_entry_t *list = &proc_list, *le = list;
+        while ((le = list_next(le)) != list) {
+            struct proc_struct *proc = le2proc(le, list_link);
+            if (proc != NULL && proc->parent == current) {
+                haskid = 1;
+                if (proc->state == PROC_ZOMBIE) {
+                    goto found;
+                }
+            }
+        }
+    }
+    if (haskid) {
+        current->state = PROC_SLEEPING;
+        current->wait_state = WT_CHILD;
+        schedule();
+        goto repeat;
+    }
+    return -E_BAD_PROC;
+
+found:
+    if (proc == idleproc || proc == initproc) {
+        panic("wait idleproc or initproc.\n");
+    }
+    if (code_store != NULL) {
+        *code_store = proc->exit_code;
+    }
+    bool intr_flag;
+    local_intr_save(intr_flag);
+    {
+        list_del(&(proc->list_link));
+        nr_process --;
+    }
+    local_intr_restore(intr_flag);
+	// free kernel stack,free proc_stuct
+	// Lab4-4,your code here
+
     return 0;
 }
 

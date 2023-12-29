@@ -29,10 +29,25 @@ static int sys_fork(uint32_t arg[])
     return do_fork(0, stack, tf);
 }
 
+static int sys_exit(uint32_t arg[])
+{
+    int error_code = (int) arg[0];
+    return do_exit(error_code);
+}
+
+static int sys_wait(uint32_t arg[])
+{
+    int pid = (int) arg[0];
+    int *store = (int *) arg[1];
+    return do_wait(pid, store);
+}
+
 static int (*syscalls[])(uint32_t arg[]) = {
         [SYS_exec]              sys_exec,
         [SYS_putc]              sys_putc,
         [SYS_fork]              sys_fork,
+        [SYS_exit]              sys_exit,
+        [SYS_wait]              sys_wait,
 };
 
 #define NUM_SYSCALLS        ((sizeof(syscalls)) / (sizeof(syscalls[0])))

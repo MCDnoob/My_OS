@@ -55,8 +55,13 @@ struct proc_struct {
     uintptr_t cr3;                              // CR3 register: the base addr of Page Directroy Table(PDT)
     uint32_t flags;                             // Process flag
     char name[PROC_NAME_LEN + 1];               // Process name
-    list_entry_t list_link;                     // Process link list 
+    list_entry_t list_link;                     // Process link list
+    int exit_code;                              // exit code (be sent to parent proc)
+    uint32_t wait_state;                        // waiting state
 };
+
+#define WT_CHILD                    (0x00000001 | WT_INTERRUPTED)
+#define WT_INTERRUPTED               0x80000000                    // the wait state could be interrupted
 
 #define le2proc(le, member)         \
     to_struct((le), struct proc_struct, member)
@@ -75,6 +80,7 @@ struct proc_struct *find_proc(int pid);
 int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf);
 int do_yield();
 int do_exit(int error_code);
+int do_wait(int pid, int *code_store);
 int do_execve(const char *name, size_t len, unsigned char *binary, size_t size);
 
 #endif /* !OS_PROCESS_PROC_H */
