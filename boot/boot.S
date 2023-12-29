@@ -22,16 +22,16 @@ start:
   movw    %ax,%ss             # -> Stack Segment
 
 # print "hello world" in real mode
-  movw    $0xb800,%ax
-  movw    %ax,%es
-  movw    $msg1,%si
-  movw    $0xbe2,%di
-  movw    $24,%cx
-  rep     movsb
-  movw    $str,%si
-  movw    $0xc04,%di
-  movw    $26,%cx
-  rep     movsb
+#  movw    $0xb800,%ax
+#  movw    %ax,%es
+#  movw    $msg1,%si
+#  movw    $0xbe2,%di
+#  movw    $24,%cx
+#  rep     movsb
+#  movw    $str,%si
+#  movw    $0xc04,%di
+#  movw    $26,%cx
+#  rep     movsb
 
   # Enable A20:
   #   For backwards compatibility with the earliest PCs, physical
@@ -102,8 +102,8 @@ gdtdesc:
   .long   gdt                             # address gdt
 
 
-msg1:
-  .byte 'i',0x7,'n',0x7,' ',0x7,'r',0x7,'e',0x7,'a',0x7,'l',0x7,' ',0x7,'m',0x7,'o',0x7,'d',0x7,'e',0x7
+#msg1:
+#  .byte 'i',0x7,'n',0x7,' ',0x7,'r',0x7,'e',0x7,'a',0x7,'l',0x7,' ',0x7,'m',0x7,'o',0x7,'d',0x7,'e',0x7
 msg2:
   .byte 'i',0x7,'n',0x7,' ',0x7,'p',0x7,'r',0x7,'o',0x7,'t',0x7, 'e',0x7,'c',0x7,'t',0x7, 'e',0x7,'d',0x7,' ',0x7,'m',0x7,'o',0x7,'d',0x7, 'e',0x7
 str:

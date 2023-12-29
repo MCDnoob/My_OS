@@ -1,0 +1,4 @@
+file obj/bin/kernel
+target remote :1234
+b *0x100000
+c

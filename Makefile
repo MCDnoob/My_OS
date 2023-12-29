@@ -101,3 +101,20 @@ QEMUOPTS = -drive file=$(OBJDIR)/bin/kernel.img,index=0,media=disk,format=raw -s
 qemu: $(IMAGES)
 	$(QEMU) $(QEMUOPTS)
 
+qemu-gdb: $(IMAGES)
+	$(QEMU) $(QEMUOPTS) -S -s
+
+qemu-tgdb: $(IMAGES)
+	$(QEMU) $(QEMUOPTS) -S -s  &
+	sleep 2
+	$(TERMINAL)  -e "gdb -q -x gdbinit"
+
+# This magic automatically generates makefile dependencies
+# for header files included from C source files we compile,
+# and keeps those dependencies up-to-date every time we recompile.
+# See 'mergedep.pl' for more information.
+$(OBJDIR)/.deps: $(foreach dir, $(OBJDIRS), $(wildcard $(OBJDIR)/$(dir)/*.d))
+	@mkdir -p $(@D)
+	perl mergedep.pl $@ $^
+
+-include $(OBJDIR)/.deps
