@@ -396,6 +396,56 @@ int page_insert(pde_t *pgdir, struct Page *page, uintptr_t va, uint32_t perm)
     return 0;
 }
 
+// pgdir_alloc_page - call alloc_page & page_insert functions to
+//                  - allocate a page size memory & setup an addr map
+//                  - pa<->la with linear address la and the PDT pgdir
+struct Page* pgdir_alloc_page(pde_t *pgdir, uintptr_t va, uint32_t perm)
+{
+	struct Page *page = alloc_page();
+	if (page != NULL ) {
+		if (page_insert(pgdir, page, va, perm) != 0) {
+			free_page(page);
+			return NULL ;
+		}
+	}
+
+	return page;
+}
+
+void unmap_range(pde_t *pgdir, uintptr_t start, uintptr_t end)
+{
+	assert(start % PGSIZE == 0 && end % PGSIZE == 0);
+	assert(USER_ACCESS(start, end));
+
+	do {
+		pte_t *ptep = get_pte(pgdir, start, 0);
+		if (ptep == NULL ) {
+			start = ROUNDDOWN(start + PTSIZE, PTSIZE);
+			continue;
+		}
+		if (*ptep != 0) {
+			page_remove_pte(pgdir, start, ptep);
+		}
+		start += PGSIZE;
+	} while (start != 0 && start < end);
+}
+
+void exit_range(pde_t *pgdir, uintptr_t start, uintptr_t end)
+{
+	assert(start % PGSIZE == 0 && end % PGSIZE == 0);
+	assert(USER_ACCESS(start, end));
+
+	start = ROUNDDOWN(start, PTSIZE);
+	do {
+		int pde_idx = PDX(start);
+		if (pgdir[pde_idx] & PTE_P) {
+			free_page(pde2page(pgdir[pde_idx]));
+			pgdir[pde_idx] = 0;
+		}
+		start += PTSIZE;
+	} while (start != 0 && start < end);
+}
+
 // invalidate a TLB entry, but only if the page tables being
 // edited are the ones currently in use by the processor.
 void tlb_invalidate(pde_t *pgdir, uintptr_t va)
@@ -478,6 +528,11 @@ void pmm_init()
     check_kern_pgdir();
 
     gdt_init();
+}
+
+int get_freePage_num()
+{
+	return nr_free;
 }
 
 

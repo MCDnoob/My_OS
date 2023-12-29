@@ -41,6 +41,54 @@ $(OBJDIR)/bin/boot: $(BOOT_OBJS)
 	$(OBJCOPY) -S -O binary -j .text $@.out $@
 	perl boot/sign.pl $@
 	
+######## for user build
+OBJDIRS += user
+OBJDIRS += user/lib
+
+USER_CFLAGS := $(CFLAGS)
+USER_LDFLAGS := $(LDFLAGS) -T user/user.ld
+
+USER_INCLUDE	:= user/lib/ \
+				   lib/ \
+				   sys/ \
+
+USER_CFLAGS += $(addprefix -I,$(USER_INCLUDE))
+
+# initcode.S must be first, so that it's the first code in the text segment!!!
+USER_SRCFILES := user/lib/initcode.S \
+				 user/lib/umain.c \
+				 user/init.c
+
+# Only build files if they exist.
+USER_SRCFILES := $(wildcard $(USER_SRCFILES))
+
+USER_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(USER_SRCFILES))
+USER_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(USER_OBJFILES))
+
+# How to build user object files
+$(OBJDIR)/user/lib/%.o: user/lib/%.S
+	@echo + as $<
+	@mkdir -p $(@D)
+	$(CC)  $(USER_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/user/lib/%.o: user/lib/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(USER_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/user/%.o: user/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(USER_CFLAGS) -c -o $@ $<
+
+# How to build the user itself
+$(OBJDIR)/bin/user/init: $(USER_OBJFILES)  user/user.ld
+	@echo + ld $@
+	@mkdir -p $(@D)
+	$(LD) -o $@ $(USER_LDFLAGS) $(USER_OBJFILES)
+	$(OBJDUMP) -S $@ > $@.asm
+	$(NM) -n $@ > $@.sym
+
 ######## for kernel build
 
 OBJDIRS += kern
@@ -84,9 +132,11 @@ KERN_SRCFILES := kern/entry.S \
                  debug/kdebug.c \
                  mm/pmm.c \
                  mm/kmalloc.c \
+                 mm/vmm.c \
                  trap/trap.c \
                  trap/trapentry.S \
                  trap/vectors.S \
+                 trap/syscall.c \
                  process/kthreadentry.S \
                  process/proc.c \
                  process/sched.c \
@@ -150,10 +200,10 @@ $(OBJDIR)/process/%.o: process/%.S
 	$(CC)  $(KERN_CFLAGS) -c -o $@ $<
 
 # How to build the kernel itself
-$(OBJDIR)/bin/kernel: $(KERN_OBJFILES)  kern/kernel.ld
+$(OBJDIR)/bin/kernel: $(KERN_OBJFILES)  kern/kernel.ld $(OBJDIR)/bin/user/init
 	@echo + ld $@
 	@mkdir -p $(@D)
-	$(LD) -o $@ $(KERN_LDFLAGS) $(KERN_OBJFILES)
+	$(LD) -o $@ $(KERN_LDFLAGS) $(KERN_OBJFILES) -b binary $(OBJDIR)/bin/user/init
 	$(OBJDUMP) -S $@ > $@.asm
 	$(NM) -n $@ > $@.sym
 

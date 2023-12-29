@@ -27,7 +27,7 @@
 #define T_MCHK                  18  // machine check
 #define T_SIMDERR               19  // SIMD floating point error
 
-#define T_SYSCALL               0x80 // SYSCALL, ONLY FOR THIS PROJ
+//#define T_SYSCALL               0x80 // SYSCALL, ONLY FOR THIS PROJ
 
 /* Hardware IRQ numbers. We receive these as (IRQ_OFFSET + IRQ_xx) */
 #define IRQ_OFFSET              32  // IRQ 0 corresponds to int IRQ_OFFSET

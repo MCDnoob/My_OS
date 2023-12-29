@@ -8,6 +8,9 @@
 #include <assert.h>
 #include <console.h>
 #include <kdebug.h>
+#include <unistd.h>
+#include <proc.h>
+#include <error.h>
 
 /* *
  * Interrupt descriptor table:
@@ -159,10 +162,14 @@ static int pgfault_handler(struct trapframe *tf)
 /* trap_dispatch - dispatch based on what type of trap occurred */
 static void trap_dispatch(struct trapframe *tf)
 {
+    //cprintf("tf->tf_trapno:%d\n", tf->tf_trapno);
     switch (tf->tf_trapno) {
     case T_PGFLT:  //page fault
     	print_trapframe(tf);
     	pgfault_handler(tf);
+        break;
+    case T_SYSCALL:
+        syscall(tf);
         break;
     case IRQ_OFFSET + IRQ_TIMER:
         //cprintf("IRQ_TIMER.\n");
@@ -171,11 +178,13 @@ static void trap_dispatch(struct trapframe *tf)
         //cprintf("IRQ_COM1.\n");
         break;
     default:
-        // in kernel, it must be a mistake
-        if (trap_in_kernel(tf)) {
-            print_trapframe(tf);
-            panic("unexpected trap in kernel.\n");
+        print_trapframe(tf);
+        if (current != NULL) {
+            cprintf("unhandled trap.\n");
+            do_exit(-E_KILLED);
         }
+        // in kernel, it must be a mistake
+        panic("unexpected trap in kernel.\n");
     }
 }
 
@@ -187,6 +196,11 @@ static void trap_dispatch(struct trapframe *tf)
 void trap(struct trapframe *tf)
 {
     // dispatch based on what type of trap occurred
+    struct trapframe *otf = current->tf;
+    current->tf = tf;
+
     trap_dispatch(tf);
+
+    current->tf = otf;
 }
 

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <console.h>
 #include <pmm.h>
+#include <vmm.h>
 #include <trap.h>
 #include <picirq.h>
 #include <clock.h>
@@ -39,6 +40,8 @@ void kern_init(void)
 	pic_init();                 // init interrupt controller
 
 	idt_init();
+
+	vmm_init();
 
 	clock_init();               // init clock interrupt
 

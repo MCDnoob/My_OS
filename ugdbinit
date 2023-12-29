@@ -1,0 +1,4 @@
+file obj/bin/user/init
+target remote :1234
+b *0x800020
+c

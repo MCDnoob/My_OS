@@ -49,7 +49,7 @@ struct proc_struct {
     uintptr_t kstack;                           // Process kernel stack
     volatile bool need_resched;                 // bool value: need to be rescheduled to release CPU?
     struct proc_struct *parent;                 // the parent process
-    //struct mm_struct *mm;                       // Process's memory management field
+    struct mm_struct *mm;                       // Process's memory management field
     struct context context;                     // Switch here to run process
     struct trapframe *tf;                       // Trap frame for current interrupt
     uintptr_t cr3;                              // CR3 register: the base addr of Page Directroy Table(PDT)
@@ -74,6 +74,7 @@ void cpu_idle(void) __attribute__((noreturn));
 struct proc_struct *find_proc(int pid);
 int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf);
 int do_exit(int error_code);
+int do_execve(const char *name, size_t len, unsigned char *binary, size_t size);
 
 #endif /* !OS_PROCESS_PROC_H */
 

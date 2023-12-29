@@ -19,6 +19,10 @@ struct Page* alloc_page();
 void free_page(struct Page *pp);
 struct Page* alloc_pages(size_t n);
 void free_pages(struct Page *pp, size_t n);
+struct Page *pgdir_alloc_page(pde_t *pgdir, uintptr_t la, uint32_t perm);
+void unmap_range(pde_t *pgdir, uintptr_t start, uintptr_t end);
+void exit_range(pde_t *pgdir, uintptr_t start, uintptr_t end);
+int get_freePage_num();
 
 /* This macro takes a kernel virtual address -- an address that points above
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
