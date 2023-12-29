@@ -35,6 +35,15 @@ static inline uintptr_t rcr2(void) __attribute__((always_inline));
 static inline uintptr_t rcr3(void) __attribute__((always_inline));
 static inline void invlpg(void *addr) __attribute__((always_inline));
 
+/* Pseudo-descriptors used for LGDT, LLDT(not used) and LIDT instructions. */
+struct pseudodesc {
+    uint16_t pd_lim;        // Limit
+    uintptr_t pd_base;      // Base address
+} __attribute__ ((packed));
+
+static inline void lidt(struct pseudodesc *pd) __attribute__((always_inline));
+static inline void ltr(uint16_t sel) __attribute__((always_inline));
+
 
 static inline uint8_t inb(uint16_t port)
 {
@@ -133,6 +142,16 @@ static inline uintptr_t rcr3(void)
 static inline void invlpg(void *addr)
 {
     asm volatile ("invlpg (%0)" :: "r" (addr) : "memory");
+}
+
+static inline void lidt(struct pseudodesc *pd)
+{
+    asm volatile ("lidt (%0)" :: "r" (pd) : "memory");
+}
+
+static inline void ltr(uint16_t sel)
+{
+    asm volatile ("ltr %0" :: "r" (sel) : "memory");
 }
 
 static inline int __strcmp(const char *s1, const char *s2) __attribute__((always_inline));

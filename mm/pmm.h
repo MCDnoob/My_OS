@@ -103,4 +103,6 @@ page_ref_dec(struct Page *page) {
     return page->pp_ref;
 }
 
+extern char bootstack[], bootstacktop[];
+
 #endif /* OS_MM_PMM_H */

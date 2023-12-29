@@ -48,6 +48,7 @@ OBJDIRS += driver
 OBJDIRS += lib
 OBJDIRS += debug
 OBJDIRS += mm
+OBJDIRS += trap
 
 KERN_CFLAGS := $(CFLAGS)
 KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld
@@ -57,6 +58,7 @@ KERN_INCLUDE	:= sys/ \
 		   lib/ \
 		   debug/ \
 		   mm/ \
+		   trap/ \
 
 KERN_CFLAGS += $(addprefix -I,$(KERN_INCLUDE))
 
@@ -77,6 +79,9 @@ KERN_SRCFILES := kern/entry.S \
                  debug/kdebug.c \
                  mm/pmm.c \
                  mm/kmalloc.c \
+                 trap/trap.c \
+                 trap/trapentry.S \
+                 trap/vectors.S \
 
 # Only build files if they exist.
 KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
@@ -114,6 +119,16 @@ $(OBJDIR)/mm/%.o: mm/%.c
 	@echo + cc $<
 	@mkdir -p $(@D)
 	$(CC) $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/trap/%.o: trap/%.c
+	@echo + cc $<
+	@mkdir -p $(@D)
+	$(CC) $(KERN_CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/trap/%.o: trap/%.S
+	@echo + as $<
+	@mkdir -p $(@D)
+	$(CC)  $(KERN_CFLAGS) -c -o $@ $<
 
 # How to build the kernel itself
 $(OBJDIR)/bin/kernel: $(KERN_OBJFILES)  kern/kernel.ld

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <console.h>
 #include <pmm.h>
+#include <trap.h>
 
 void monitor(void)
 {
@@ -30,6 +31,8 @@ void kern_init(void)
 	cprintf("wind_os version %d running!\n", 1);
 
 	pmm_init();
+
+	idt_init();
 
 	monitor();
 
