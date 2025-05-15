@@ -1,0 +1,171 @@
+diff --git a/Makefile b/Makefile
+index 3680b15..80731ed 100644
+--- a/Makefile
++++ b/Makefile
+@@ -380,7 +380,7 @@ IMAGES = $(OBJDIR)/bin/kernel.img
+ IMAGES += $(OBJDIR)/bin/fs.img
+ CPUS ?= 1
+ QEMUOPTS = -drive file=$(OBJDIR)/bin/fs.img,index=1,media=disk,format=raw \
+-           -drive file=$(OBJDIR)/bin/kernel.img,index=0,media=disk,format=raw -serial mon:stdio -vga std -m 256 -smp $(CPUS)
++           -drive file=$(OBJDIR)/bin/kernel.img,index=0,media=disk,format=raw -serial mon:stdio -vga std -m 27 -smp $(CPUS)
+ 
+ qemu: $(IMAGES)
+ 	$(QEMU) $(QEMUOPTS)
+diff --git a/mm/swap.c b/mm/swap.c
+index ba8c456..2162f82 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -7,7 +7,8 @@
+ #include <kdebug.h>
+ #include <list.h>
+ #include <unistd.h>
+-//#include <file.h>
++#include <file.h>
++#include <cpu.h>
+ #include <proc.h>
+ #include <swap.h>
+ 
+@@ -22,7 +23,7 @@ bool check_swap = 0;
+ void swap_init()
+ {
+   list_init(&pra_list_head);
+-  check_swap = 0;
++  check_swap = 1;
+ }
+ 
+ int add_swappable(struct Page *page)
+@@ -75,26 +76,26 @@ static struct Page* get_swappable()
+ 
+ static int swapfile_read(int file_no, struct Page *page)
+ {
+-//  int fd;
+-//  char tmp_path[50] = {0};
+-//  snprintf(tmp_path,50,SWAPFILE"%d", (file_no-1)/1024);
+-//  if ((fd = file_open(tmp_path, O_RDONLY)) < 0) {
+-//    cprintf("swapfile_read file_open failed\n");
+-//    return -1;
+-//  }
+-//  struct file *f = current->ofile[fd];
+-//  f->off = ((file_no-1)%1024)*PGSIZE;
+-//  cprintf("swapfile_read %s, off:%d\n", tmp_path, f->off);
+-//
+-//  if (file_read(f, page2kva(page), PGSIZE) != PGSIZE) {
+-//    cprintf("swapfile_read file_read failed\n");
+-//    current->ofile[fd] = 0;
+-//    file_close(f);
+-//    return -1;
+-//  }
+-//
+-//  current->ofile[fd] = 0;
+-//  file_close(f);
++  int fd;
++  char tmp_path[50] = {0};
++  snprintf(tmp_path,50,SWAPFILE"%d", (file_no-1)/1024);
++  if ((fd = file_open(tmp_path, O_RDONLY)) < 0) {
++    cprintf("swapfile_read file_open failed\n");
++    return -1;
++  }
++  struct file *f = current->ofile[fd];
++  f->off = ((file_no-1)%1024)*PGSIZE;
++  cprintf("swapfile_read %s, off:%d\n", tmp_path, f->off);
++
++  if (file_read(f, page2kva(page), PGSIZE) != PGSIZE) {
++    cprintf("swapfile_read file_read failed\n");
++    current->ofile[fd] = 0;
++    file_close(f);
++    return -1;
++  }
++
++  current->ofile[fd] = 0;
++  file_close(f);
+ 
+   //file_unlink(tmp_path);
+ 
+@@ -103,29 +104,29 @@ static int swapfile_read(int file_no, struct Page *page)
+ 
+ static int swapfile_write(struct Page *page)
+ {
+-//  int fd;
+-//  char tmp_path[50] = {0};
+-//  int file_no = (count-1)/1024;
+-//  snprintf(tmp_path,50,SWAPFILE"%d", file_no);
+-//  if ((fd = file_open(tmp_path, O_WRONLY)) < 0) {
+-//    if ((fd = file_open(tmp_path, O_WRONLY|O_CREATE)) < 0) {
+-//        cprintf("swapfile_write file_open failed\n");
+-//        return -1;
+-//      }
+-//  }
+-//  struct file *f = current->ofile[fd];
+-//  f->off = ((count-1)%1024)*PGSIZE;
+-//  cprintf("swapfile_write %s, off:%d\n", tmp_path, f->off);
+-//
+-//  if (file_write(f, page2kva(page), PGSIZE) != PGSIZE) {
+-//    cprintf("swapfile_write file_write failed\n");
+-//    current->ofile[fd] = 0;
+-//    file_close(f);
+-//    return -1;
+-//  }
+-//
+-//  current->ofile[fd] = 0;
+-//  file_close(f);
++  int fd;
++  char tmp_path[50] = {0};
++  int file_no = (count-1)/1024;
++  snprintf(tmp_path,50,SWAPFILE"%d", file_no);
++  if ((fd = file_open(tmp_path, O_WRONLY)) < 0) {
++    if ((fd = file_open(tmp_path, O_WRONLY|O_CREATE)) < 0) {
++        cprintf("swapfile_write file_open failed\n");
++        return -1;
++      }
++  }
++  struct file *f = current->ofile[fd];
++  f->off = ((count-1)%1024)*PGSIZE;
++  cprintf("swapfile_write %s, off:%d\n", tmp_path, f->off);
++
++  if (file_write(f, page2kva(page), PGSIZE) != PGSIZE) {
++    cprintf("swapfile_write file_write failed\n");
++    current->ofile[fd] = 0;
++    file_close(f);
++    return -1;
++  }
++
++  current->ofile[fd] = 0;
++  file_close(f);
+ 
+   return count++;
+ }
+diff --git a/user/testuser.c b/user/testuser.c
+index 7617bd3..acd3610 100644
+--- a/user/testuser.c
++++ b/user/testuser.c
+@@ -63,26 +63,10 @@ struct test_struct {
+ 
+ void test_malloc()
+ {
+-    struct test_struct* mm = NULL, *mm1 = NULL;
+-    mm = (struct test_struct*)malloc(sizeof(struct test_struct));
+-    cprintf("mm:0x%x\n", mm);
+-    memset(mm, 0, sizeof(*mm));
+-    mm->m = 11;
+-    mm->n[0] = 3;
+-    mm->n[9] = 4;
+-    strcpy(mm->str, "abcdef");
+-    cprintf("mm:%d,%d,%d,%d,%s\n",mm->m,mm->n[0], mm->n[9], mm->n[4], mm->str);
+-    free(mm);
+-
+-    mm = (struct test_struct*)malloc(sizeof(struct test_struct));
+-    cprintf("mm:0x%x\n", mm);
+-    mm1 = (struct test_struct*)malloc(sizeof(struct test_struct));
+-    cprintf("mm1:0x%x\n", mm1);
+-    memset(mm, 0, sizeof(*mm));
+-    strcpy(mm->str, "abcdef");
+-    cprintf("mm:%d,%d,%d,%d,%s\n",mm->m,mm->n[0], mm->n[9], mm->n[4], mm->str);
+-    free(mm);
+-    free(mm1);
++	int size = 9*1024*1024;
++	void *addr = malloc(size);
++      memset(addr,1,size);
++	  free(addr);
+ 
+     cprintf("test_malloc ok\n");
+ }
